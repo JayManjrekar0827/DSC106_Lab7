@@ -128,7 +128,7 @@ map.on('load', async () => {
     paint: bikeLanePaint,
   });
 
-  const svg = d3.select('#map').select('svg');
+  const svg = d3.select('#map').select('svg').raise();
 
   let jsonData;
   try {
