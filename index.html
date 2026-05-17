@@ -6,6 +6,12 @@
     <title>Bikewatching</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="global.css" />
+    <link rel="stylesheet" href="map.css" />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="map.js" type="module"></script>
   </head>
   <body>
     <h1>🚴🏼‍♀️ Bikewatching</h1>
@@ -13,5 +19,6 @@
       An interactive map of BlueBikes stations and traffic in the Boston area,
       with bike lanes, time-of-day filtering, and arrival vs. departure flow.
     </p>
+    <div id="map"></div>
   </body>
 </html>
