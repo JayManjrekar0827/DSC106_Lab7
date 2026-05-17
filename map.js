@@ -7,12 +7,16 @@ mapboxgl.accessToken = 'YOUR_ACCESS_TOKEN_HERE';
 
 const INPUT_BLUEBIKES_JSON_URL =
   'https://dsc106.com/labs/lab07/data/bluebikes-stations.json';
+const TRAFFIC_CSV_URL =
+  'https://dsc106.com/labs/lab07/data/bluebikes-traffic-2024-03.csv';
 
 const bikeLanePaint = {
   'line-color': '#32D400',
   'line-width': 5,
   'line-opacity': 0.6,
 };
+
+let baseStations = [];
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -27,6 +31,32 @@ function getCoords(station) {
   const point = new mapboxgl.LngLat(+station.lon, +station.lat);
   const { x, y } = map.project(point);
   return { cx: x, cy: y };
+}
+
+function computeStationTraffic(stations, trips) {
+  const departures = d3.rollup(
+    trips,
+    (v) => v.length,
+    (d) => d.start_station_id,
+  );
+
+  const arrivals = d3.rollup(
+    trips,
+    (v) => v.length,
+    (d) => d.end_station_id,
+  );
+
+  return stations.map((station) => {
+    const id = station.short_name;
+    const dep = departures.get(id) ?? 0;
+    const arr = arrivals.get(id) ?? 0;
+    return {
+      ...station,
+      departures: dep,
+      arrivals: arr,
+      totalTraffic: dep + arr,
+    };
+  });
 }
 
 map.on('load', async () => {
@@ -65,19 +95,44 @@ map.on('load', async () => {
     return;
   }
 
-  const stations = jsonData.data.stations;
-  console.log('Stations Array:', stations);
+  baseStations = jsonData.data.stations;
+
+  let trips;
+  try {
+    trips = await d3.csv(TRAFFIC_CSV_URL, (trip) => {
+      trip.started_at = new Date(trip.started_at);
+      trip.ended_at = new Date(trip.ended_at);
+      return trip;
+    });
+    console.log('Loaded trips:', trips.length);
+  } catch (error) {
+    console.error('Error loading traffic CSV:', error);
+    return;
+  }
+
+  const stations = computeStationTraffic(baseStations, trips);
+
+  const radiusScale = d3
+    .scaleSqrt()
+    .domain([0, d3.max(stations, (d) => d.totalTraffic)])
+    .range([0, 25]);
 
   const circles = svg
     .selectAll('circle')
-    .data(stations)
+    .data(stations, (d) => d.short_name)
     .enter()
     .append('circle')
-    .attr('r', 5)
-    .attr('fill', 'steelblue')
+    .attr('r', (d) => radiusScale(d.totalTraffic))
     .attr('stroke', 'white')
     .attr('stroke-width', 1)
-    .attr('opacity', 0.8);
+    .attr('opacity', 0.8)
+    .each(function (d) {
+      d3.select(this)
+        .append('title')
+        .text(
+          `${d.totalTraffic} trips (${d.departures} departures, ${d.arrivals} arrivals)`,
+        );
+    });
 
   function updatePositions() {
     circles
