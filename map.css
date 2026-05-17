@@ -1,7 +1,13 @@
+.map-section {
+  position: relative;
+  width: 100%;
+}
+
 #map {
   width: 100%;
-  min-height: 60vh;
-  height: 70vh;
+  min-height: 50vh;
+  height: 65vh;
+  max-height: 720px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   position: relative;
@@ -41,12 +47,20 @@
 }
 
 .legend {
+  position: absolute;
+  left: 0.75em;
+  right: 0.75em;
+  bottom: 0.75em;
+  z-index: 10;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 1.25em;
-  margin-block: 1em;
-  width: 100%;
+  padding: 0.5em 0.75em;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
 }
 
 .legend-heading {
@@ -69,6 +83,18 @@
   height: 1rem;
   border-radius: 50%;
   background: var(--color);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
+}
+
+.legend-departures::before {
+  background: steelblue;
+}
+
+.legend-balanced::before {
+  background: #7b6cff;
+}
+
+.legend-arrivals::before {
+  background: darkorange;
 }
