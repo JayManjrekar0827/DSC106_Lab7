@@ -173,6 +173,7 @@ map.on('load', async () => {
     .attr('r', (d) => radiusScale(d.totalTraffic))
     .attr('stroke', 'white')
     .attr('stroke-width', 1)
+    .style('--departure-ratio', (d) => stationFlow(departureRatio(d)))
     .each(function (d) {
       d3.select(this)
         .append('title')
@@ -213,6 +214,7 @@ map.on('load', async () => {
       .data(filteredStations, (d) => d.short_name)
       .join('circle')
       .attr('r', (d) => radiusScale(d.totalTraffic))
+      .style('--departure-ratio', (d) => stationFlow(departureRatio(d)))
       .each(function (d) {
         const circle = d3.select(this);
         circle.select('title').remove();

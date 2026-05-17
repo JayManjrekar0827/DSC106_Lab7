@@ -26,10 +26,47 @@ body {
   pointer-events: none;
 }
 
+#map circle,
+.legend > div {
+  --color-departures: steelblue;
+  --color-arrivals: darkorange;
+  --color: color-mix(
+    in oklch,
+    var(--color-departures) calc(100% * var(--departure-ratio)),
+    var(--color-arrivals)
+  );
+  fill: var(--color);
+}
+
 #map circle {
-  fill: steelblue;
   fill-opacity: 0.6;
   stroke: white;
   stroke-width: 1;
   pointer-events: auto;
+}
+
+.legend {
+  display: flex;
+  gap: 1px;
+  margin-block: 1em;
+  width: 100%;
+}
+
+.legend > div {
+  flex: 1;
+  padding: 0.6em 1.5em;
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.legend > div:first-child {
+  text-align: left;
+}
+
+.legend > div:nth-child(2) {
+  text-align: center;
+}
+
+.legend > div:last-child {
+  text-align: right;
 }
