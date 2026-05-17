@@ -16,7 +16,18 @@ const bikeLanePaint = {
   'line-opacity': 0.6,
 };
 
+const stationFlow = d3.scaleQuantize().domain([0, 1]).range([0, 0.5, 1]);
+
+let departuresByMinute = Array.from({ length: 1440 }, () => []);
+let arrivalsByMinute = Array.from({ length: 1440 }, () => []);
+
 let baseStations = [];
+let timeFilter = -1;
+let timeSlider;
+let selectedTime;
+let anyTimeLabel;
+let radiusScale;
+let circles;
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -33,15 +44,41 @@ function getCoords(station) {
   return { cx: x, cy: y };
 }
 
-function computeStationTraffic(stations, trips) {
+function minutesSinceMidnight(date) {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function formatTime(minutes) {
+  const date = new Date(0, 0, 0, 0, minutes);
+  return date.toLocaleString('en-US', { timeStyle: 'short' });
+}
+
+function filterByMinute(tripsByMinute, minute) {
+  if (minute === -1) {
+    return tripsByMinute.flat();
+  }
+
+  const minMinute = (minute - 60 + 1440) % 1440;
+  const maxMinute = (minute + 60) % 1440;
+
+  if (minMinute > maxMinute) {
+    const beforeMidnight = tripsByMinute.slice(minMinute);
+    const afterMidnight = tripsByMinute.slice(0, maxMinute + 1);
+    return beforeMidnight.concat(afterMidnight).flat();
+  }
+
+  return tripsByMinute.slice(minMinute, maxMinute + 1).flat();
+}
+
+function computeStationTraffic(stations, filter = -1) {
   const departures = d3.rollup(
-    trips,
+    filterByMinute(departuresByMinute, filter),
     (v) => v.length,
     (d) => d.start_station_id,
   );
 
   const arrivals = d3.rollup(
-    trips,
+    filterByMinute(arrivalsByMinute, filter),
     (v) => v.length,
     (d) => d.end_station_id,
   );
@@ -57,6 +94,12 @@ function computeStationTraffic(stations, trips) {
       totalTraffic: dep + arr,
     };
   });
+}
+
+function departureRatio(station) {
+  return station.totalTraffic
+    ? station.departures / station.totalTraffic
+    : 0.5;
 }
 
 map.on('load', async () => {
@@ -97,27 +140,32 @@ map.on('load', async () => {
 
   baseStations = jsonData.data.stations;
 
-  let trips;
   try {
-    trips = await d3.csv(TRAFFIC_CSV_URL, (trip) => {
+    await d3.csv(TRAFFIC_CSV_URL, (trip) => {
       trip.started_at = new Date(trip.started_at);
       trip.ended_at = new Date(trip.ended_at);
+
+      const startedMinutes = minutesSinceMidnight(trip.started_at);
+      const endedMinutes = minutesSinceMidnight(trip.ended_at);
+      departuresByMinute[startedMinutes].push(trip);
+      arrivalsByMinute[endedMinutes].push(trip);
+
       return trip;
     });
-    console.log('Loaded trips:', trips.length);
+    console.log('Loaded traffic data into minute buckets');
   } catch (error) {
     console.error('Error loading traffic CSV:', error);
     return;
   }
 
-  const stations = computeStationTraffic(baseStations, trips);
+  let stations = computeStationTraffic(baseStations);
 
-  const radiusScale = d3
+  radiusScale = d3
     .scaleSqrt()
     .domain([0, d3.max(stations, (d) => d.totalTraffic)])
     .range([0, 25]);
 
-  const circles = svg
+  circles = svg
     .selectAll('circle')
     .data(stations, (d) => d.short_name)
     .enter()
@@ -125,7 +173,6 @@ map.on('load', async () => {
     .attr('r', (d) => radiusScale(d.totalTraffic))
     .attr('stroke', 'white')
     .attr('stroke-width', 1)
-    .attr('opacity', 0.8)
     .each(function (d) {
       d3.select(this)
         .append('title')
@@ -146,4 +193,53 @@ map.on('load', async () => {
   map.on('zoom', updatePositions);
   map.on('resize', updatePositions);
   map.on('moveend', updatePositions);
+
+  timeSlider = document.getElementById('time-slider');
+  selectedTime = document.getElementById('selected-time');
+  anyTimeLabel = document.getElementById('any-time');
+
+  function updateScatterPlot(filter) {
+    const filteredStations = computeStationTraffic(baseStations, filter);
+
+    radiusScale.domain([
+      0,
+      d3.max(filteredStations, (d) => d.totalTraffic) || 0,
+    ]);
+    filter === -1
+      ? radiusScale.range([0, 25])
+      : radiusScale.range([3, 50]);
+
+    circles = circles
+      .data(filteredStations, (d) => d.short_name)
+      .join('circle')
+      .attr('r', (d) => radiusScale(d.totalTraffic))
+      .each(function (d) {
+        const circle = d3.select(this);
+        circle.select('title').remove();
+        circle
+          .append('title')
+          .text(
+            `${d.totalTraffic} trips (${d.departures} departures, ${d.arrivals} arrivals)`,
+          );
+      });
+
+    updatePositions();
+  }
+
+  function updateTimeDisplay() {
+    timeFilter = Number(timeSlider.value);
+
+    if (timeFilter === -1) {
+      selectedTime.textContent = '';
+      anyTimeLabel.style.display = 'block';
+    } else {
+      selectedTime.textContent = formatTime(timeFilter);
+      anyTimeLabel.style.display = 'none';
+    }
+
+    updateScatterPlot(timeFilter);
+  }
+
+  timeSlider.addEventListener('input', updateTimeDisplay);
+  updateTimeDisplay();
 });
