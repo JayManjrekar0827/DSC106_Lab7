@@ -1,10 +1,10 @@
 import mapboxgl from 'https://cdn.jsdelivr.net/npm/mapbox-gl@2.15.0/+esm';
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
-import { MAPBOX_ACCESS_TOKEN } from './config.js';
 
 console.log('Mapbox GL JS Loaded:', mapboxgl);
 
-mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+mapboxgl.accessToken =
+  'pk.eyJ1IjoiamF5bWFuanJla2FyIiwiYSI6ImNtcDk1MHdlZjBvYXEyc3EwejdmYXI3NHIifQ.PfAcfagr5sISA6DiW1tHOw';
 
 const INPUT_BLUEBIKES_JSON_URL =
   'https://dsc106.com/labs/lab07/data/bluebikes-stations.json';
